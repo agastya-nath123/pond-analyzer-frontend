@@ -1,0 +1,853 @@
+/*
+  Pond Site Selection
+  Colours follow the Survey of India toposheet: sienna contours, blue
+  water, green for land cover, red for boundaries, blue-black ink.
+*/
+
+:root {
+  --ink: #243642;
+  --muted: #5e6e76;
+  --rule: #d6dedc;
+  --field-border: #b4c1be;
+  --paper: #f7f9f8;
+  --bg: #e9eeec;
+
+  --contour: #a0522d;
+  --water: #1b5e9e;
+  --water-dark: #154a7d;
+  --water-tint: #e4eef7;
+  --catchment: #4e8c3a;
+  --catchment-tint: rgba(78, 140, 58, 0.22);
+  --boundary: #c0392b;
+  --error-tint: #fbeceb;
+  --error-ink: #8a2a1f;
+
+  --panel-width: 400px;
+  --radius: 4px;
+
+  color: var(--ink);
+  background: var(--bg);
+}
+
+/* ------------------------------------------------------------------------
+   Layout: panel on the left, map fills the rest of the window
+   ------------------------------------------------------------------------ */
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(320px, var(--panel-width)) minmax(0, 1fr);
+  grid-template-areas: "panel map";
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.panel {
+  grid-area: panel;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+  border-right: 1px solid var(--rule);
+}
+
+.map-area {
+  grid-area: map;
+  position: relative;
+  min-height: 0;
+}
+
+.map-wrapper,
+.map {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+/* The double rule echoes the neatline around a map sheet. */
+.panel-header {
+  padding: 1.5rem 1.5rem 1.25rem;
+  border-bottom: 3px double var(--ink);
+}
+
+.panel-header h1 {
+  font-size: 1.625rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+}
+
+.panel-header p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 38ch;
+}
+
+.panel-section {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.panel-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0.75rem;
+}
+
+.panel-section > p + p,
+.panel-section > p + .field,
+.panel-section > .field + .field {
+  margin-top: 0.75rem;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.panel-section > .note + .file-picker,
+.file-picker .note {
+  margin-top: 0.75rem;
+}
+
+.field-error {
+  color: var(--error-ink);
+  font-size: 0.875rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------------
+   Buttons and fields
+   ------------------------------------------------------------------------ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.button:hover:not(:disabled):not(.is-disabled) {
+  background: var(--bg);
+}
+
+.button:disabled,
+.button.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button-primary {
+  width: 100%;
+  min-height: 3rem;
+  margin-top: 1rem;
+  border-color: var(--water);
+  background: var(--water);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--water-dark);
+  border-color: var(--water-dark);
+}
+
+.button-primary:disabled {
+  opacity: 1;
+  border-color: #a9bccd;
+  background: #a9bccd;
+}
+
+.button-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--water);
+  padding-inline: 0.5rem;
+}
+
+.button-quiet:hover:not(:disabled) {
+  background: var(--water-tint);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.mode-switch button {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 0;
+  background: #fff;
+  font-size: 0.925rem;
+  cursor: pointer;
+}
+
+.mode-switch button + button {
+  border-left: 1px solid var(--ink);
+}
+
+.mode-switch button.is-active {
+  background: var(--ink);
+  color: #fff;
+  font-weight: 600;
+}
+
+.mode-switch button:disabled {
+  cursor: not-allowed;
+}
+
+.mode-switch button:disabled:not(.is-active) {
+  color: var(--muted);
+}
+
+.file-picker {
+  margin-top: 0.75rem;
+}
+
+.selection-summary {
+  margin-top: 1rem;
+  font-size: 0.925rem;
+}
+
+.selection-summary p {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.selection-summary p + p {
+  margin-top: 0.5rem;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.925rem;
+  cursor: pointer;
+}
+
+.toggle input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--water);
+}
+
+.field label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.925rem;
+  font-weight: 500;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.field input[type="number"] {
+  max-width: 10rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.field .note {
+  margin-top: 0.35rem;
+}
+
+:where(button, input, select, .button, a):focus-visible,
+.file-picker input:focus-visible + label {
+  outline: 2px solid var(--water);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------------
+   Progress
+   ------------------------------------------------------------------------ */
+
+.steps {
+  list-style: none;
+  padding: 0;
+  counter-reset: step;
+  margin-bottom: 0.75rem;
+}
+
+.step {
+  counter-increment: step;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 0.75rem;
+  padding: 0.4rem 0 0.4rem 2.1rem;
+  font-size: 0.95rem;
+}
+
+.step::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.45rem;
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 1.5px solid var(--field-border);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.step-label {
+  grid-column: 1;
+}
+
+.step-time {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-detail {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.step-pending .step-label {
+  color: var(--muted);
+}
+
+.step-active .step-label {
+  font-weight: 600;
+}
+
+.step-active::before {
+  content: "";
+  border-color: var(--water);
+  border-top-color: transparent;
+  animation: spin 0.9s linear infinite;
+}
+
+.step-done::before {
+  content: "\2713";
+  border-color: var(--catchment);
+  background: var(--catchment);
+  color: #fff;
+}
+
+.step-error::before {
+  content: "!";
+  border-color: var(--boundary);
+  background: var(--boundary);
+  color: #fff;
+}
+
+.step-error .step-label {
+  color: var(--error-ink);
+  font-weight: 600;
+}
+
+.step-skipped::before {
+  content: "\2013";
+}
+
+.step-skipped .step-label {
+  color: var(--muted);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error {
+  margin: 1rem 1.5rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--boundary);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--error-tint);
+  color: var(--error-ink);
+  font-size: 0.925rem;
+}
+
+/* ------------------------------------------------------------------------
+   Results
+   ------------------------------------------------------------------------ */
+
+.result-lead {
+  background: #fff;
+}
+
+.big-figure {
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mid-figure {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.big-figure-sub {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.explain {
+  font-size: 0.925rem;
+  line-height: 1.55;
+  max-width: 44ch;
+}
+
+/*
+  The water gauge. Styled after the staff gauge painted on a reservoir
+  wall: a scale marked every tenth, filled to the level an average year's
+  runoff would reach.
+*/
+.gauge {
+  margin: 1.25rem 0 1rem;
+}
+
+.gauge-track {
+  position: relative;
+  height: 2.25rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Scale marks drawn over the water so the level can be read against them */
+.gauge-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to right,
+      var(--ink) 0 1.5px,
+      transparent 1.5px 10%
+    ) top left / 100% 32% no-repeat,
+    repeating-linear-gradient(
+      to right,
+      rgba(36, 54, 66, 0.55) 0 1px,
+      transparent 1px 5%
+    ) top left / 100% 18% no-repeat;
+}
+
+.gauge-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 40%),
+    var(--water);
+  border-right: 2px solid var(--water-dark);
+  transition: width 500ms ease-out;
+}
+
+.gauge-overflow {
+  position: absolute;
+  z-index: 1;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gauge-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.facts {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  font-size: 0.925rem;
+}
+
+.fact dt {
+  color: var(--muted);
+}
+
+.fact dd {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Legend-style swatches, shared by panel headings and the map legend */
+.swatch,
+.legend-swatch {
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.swatch-boundary {
+  border: 2px dashed var(--boundary);
+}
+
+.swatch-water {
+  background: var(--water);
+}
+
+.swatch-catchment {
+  border: 2px solid var(--catchment);
+  background: var(--catchment-tint);
+}
+
+.swatch-contour {
+  height: 0;
+  border-radius: 0;
+  border-top: 2px solid var(--contour);
+}
+
+.swatch-outlet {
+  width: 12px;
+  height: 12px;
+  margin-inline: 3px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--water);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+/* Candidate table */
+.table-scroll {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+}
+
+.sites {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.sites th,
+.sites td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.sites thead th {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-bottom-color: var(--field-border);
+}
+
+.sites th:first-child,
+.sites td:first-child {
+  padding-left: 0.6rem;
+}
+
+.sites .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sites tbody th {
+  font-weight: 400;
+}
+
+.sites tr.is-selected {
+  background: var(--water-tint);
+}
+
+.sites tr.is-selected th:first-child {
+  box-shadow: inset 3px 0 0 var(--water);
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--water);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.link-button[aria-pressed="true"] {
+  color: var(--ink);
+  text-decoration: none;
+  cursor: default;
+}
+
+.link-button:disabled:not([aria-pressed="true"]) {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--water);
+  border-radius: 999px;
+  color: var(--water);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.sites .field-error {
+  display: block;
+  font-size: 0.8rem;
+}
+
+.empty-state .how {
+  padding-left: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.empty-state .how li + li {
+  margin-top: 0.5rem;
+}
+
+.sources .button {
+  margin-top: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+/* ------------------------------------------------------------------------
+   Map
+   ------------------------------------------------------------------------ */
+
+.leaflet-container {
+  font-family: inherit;
+  font-size: 0.875rem;
+  background: #dfe6e3;
+}
+
+.leaflet-container:focus-visible {
+  outline: 2px solid var(--water);
+  outline-offset: -2px;
+}
+
+.leaflet-container.is-drawing,
+.leaflet-container.is-drawing .leaflet-interactive:not(.leaflet-marker-icon) {
+  cursor: crosshair;
+}
+
+/* Each custom pane gets its own SVG root. Let clicks and hovers fall
+   through the empty parts so shapes in lower panes keep their tooltips. */
+.leaflet-pane > svg {
+  pointer-events: none;
+}
+
+.leaflet-pane > svg path.leaflet-interactive {
+  pointer-events: auto;
+}
+
+.leaflet-contours-pane canvas {
+  pointer-events: none;
+}
+
+.pond-pin span {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--water);
+  box-shadow:
+    0 0 0 1.5px var(--ink),
+    0 1px 4px rgba(36, 54, 66, 0.45);
+}
+
+.leaflet-tooltip {
+  border-color: var(--rule);
+  border-radius: var(--radius);
+  color: var(--ink);
+  font-size: 0.85rem;
+  box-shadow: 0 1px 4px rgba(36, 54, 66, 0.25);
+}
+
+.leaflet-tooltip.volume-label {
+  padding: 0.3rem 0.65rem;
+  border: 0;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip-right.volume-label::before {
+  border-right-color: var(--ink);
+}
+
+.leaflet-control-layers {
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.map-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 1000;
+  max-width: calc(100% - 160px);
+  transform: translateX(-50%);
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.925rem;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(36, 54, 66, 0.35);
+}
+
+.map-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 28px;
+  z-index: 1000;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: rgba(247, 249, 248, 0.95);
+  font-size: 0.825rem;
+  line-height: 1.7;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(36, 54, 66, 0.2);
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* ------------------------------------------------------------------------
+   Narrow screens: map on top, panel below, page scrolls
+   ------------------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "map"
+      "panel";
+    height: auto;
+    overflow: visible;
+  }
+
+  .map-area {
+    height: 60vh;
+    min-height: 320px;
+  }
+
+  .panel {
+    overflow: visible;
+    border-right: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .panel-header p {
+    max-width: none;
+  }
+
+  .map-hint {
+    top: auto;
+    bottom: 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .map-legend {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gauge-fill {
+    transition: none;
+  }
+
+  .step-active::before {
+    animation: none;
+    border-top-color: var(--water);
+  }
+}
